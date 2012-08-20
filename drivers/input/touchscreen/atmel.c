@@ -165,6 +165,7 @@ extern void sweep2wake_setleddev(struct led_classdev * led_dev) {
 EXPORT_SYMBOL(sweep2wake_setleddev);
 
 static void sweep2wake_presspwr(struct work_struct * sweep2wake_presspwr_work) {
+	input_event(sweep2wake_pwrdev, EV_KEY, KEY_HOME, 0);
 	input_event(sweep2wake_pwrdev, EV_KEY, KEY_POWER, 1);
 	input_event(sweep2wake_pwrdev, EV_SYN, 0, 0);
 	msleep(100);
