@@ -10,7 +10,6 @@
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- *
  */
 
 #include <linux/module.h>
@@ -136,6 +135,8 @@ static void multi_input_report(struct atmel_ts_data *ts);
  * 1 = sweep2wake with no backlight
  * 2 = sweep2wake with backlight
  */
+struct atmel_ts_data *dummy_ts_points_to_real_ts;
+ 
 #ifdef CONFIG_TOUCHSCREEN_ATMEL_SWEEP2WAKE_DISABLED
 int s2w_switch = 0;
 int s2w_temp = 0;
@@ -165,12 +166,17 @@ extern void sweep2wake_setleddev(struct led_classdev * led_dev) {
 EXPORT_SYMBOL(sweep2wake_setleddev);
 
 static void sweep2wake_presspwr(struct work_struct * sweep2wake_presspwr_work) {
+	// to prevent home + pwr key screen capture event, 
+	// clear home key event during sweep2wake screen off.
+	clear_bit(KEY_HOME, dummy_ts_points_to_real_ts->input_dev->keybit);
 	input_event(sweep2wake_pwrdev, EV_KEY, KEY_POWER, 1);
 	input_event(sweep2wake_pwrdev, EV_SYN, 0, 0);
 	msleep(100);
 	input_event(sweep2wake_pwrdev, EV_KEY, KEY_POWER, 0);
 	input_event(sweep2wake_pwrdev, EV_SYN, 0, 0);
 	msleep(100);
+	// restore home key event
+	set_bit(KEY_HOME, dummy_ts_points_to_real_ts->input_dev->keybit);
 	mutex_unlock(&pwrlock);
 	return;
 }
@@ -804,7 +810,7 @@ static int atmel_touch_sysfs_init(void)
 
 static void atmel_touch_sysfs_deinit(void)
 {
-#ifdef CONFIG_TOUCHSCREEN_CYPRESS_SWEEP2WAKE
+#ifdef CONFIG_TOUCHSCREEN_ATMEL_SWEEP2WAKE
 	sysfs_remove_file(android_touch_kobj, &dev_attr_sweep2wake.attr);
 #endif
 	sysfs_remove_file(android_touch_kobj, &dev_attr_info.attr);
@@ -1361,12 +1367,22 @@ static void multi_input_report(struct atmel_ts_data *ts)
 			    	    (ts->finger_data[loop_i].x > nextx) &&
 				    (ts->finger_data[loop_i].y > 950))) {
 					prevx = 667;
+//					nextx = 333;
 					nextx = 333;
 					barrier[0] = true;
 					if ((barrier[1] == true) ||
 					   ((ts->finger_data[loop_i].x < prevx) &&
 					    (ts->finger_data[loop_i].x > nextx) &&
 					    (ts->finger_data[loop_i].y > 950))) {
+/*
+							if (exec_count) {
+								printk(KERN_INFO "[sweep2wake]: POWER OFF.\n");
+								sweep2wake_pwrtrigger();
+								exec_count = false;
+								break;
+							}
+*/
+///*
 						prevx = 333;
 						barrier[1] = true;
 						if ((ts->finger_data[loop_i].x < prevx) &&
@@ -1378,6 +1394,7 @@ static void multi_input_report(struct atmel_ts_data *ts)
 								break;
 							}
 						}
+//*/
 					}
 				}
 			}
@@ -1926,6 +1943,10 @@ static int atmel_ts_probe(struct i2c_client *client,
 		ret = -ENOMEM;
 		goto err_alloc_data_failed;
 	}
+
+#ifdef CONFIG_TOUCHSCREEN_ATMEL_SWEEP2WAKE
+	dummy_ts_points_to_real_ts = ts;
+#endif
 
 	ts->atmel_wq = create_singlethread_workqueue("atmel_wq");
 	if (!ts->atmel_wq) {
@@ -2752,4 +2773,3 @@ module_exit(atmel_ts_exit);
 
 MODULE_DESCRIPTION("ATMEL Touch driver");
 MODULE_LICENSE("GPL");
-
