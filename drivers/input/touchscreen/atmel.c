@@ -165,6 +165,11 @@ extern void sweep2wake_setleddev(struct led_classdev * led_dev) {
 EXPORT_SYMBOL(sweep2wake_setleddev);
 
 static void sweep2wake_presspwr(struct work_struct * sweep2wake_presspwr_work) {
+	msleep(500);	//when turning off screen with sweep2wake, last input of touch screen is "home key".
+					//so, immediate power key event can be combined with home key and cause capture event
+					//on sense rom.
+					//so, delaying for finger detach can prevent screen caputre event
+					//500ms seems not too long delay but, safe.
 	input_event(sweep2wake_pwrdev, EV_KEY, KEY_POWER, 1);
 	input_event(sweep2wake_pwrdev, EV_SYN, 0, 0);
 	msleep(100);
@@ -174,6 +179,7 @@ static void sweep2wake_presspwr(struct work_struct * sweep2wake_presspwr_work) {
 	mutex_unlock(&pwrlock);
 	return;
 }
+
 static DECLARE_WORK(sweep2wake_presspwr_work, sweep2wake_presspwr);
 
 void sweep2wake_pwrtrigger(void) {
@@ -804,7 +810,7 @@ static int atmel_touch_sysfs_init(void)
 
 static void atmel_touch_sysfs_deinit(void)
 {
-#ifdef CONFIG_TOUCHSCREEN_CYPRESS_SWEEP2WAKE
+#ifdef CONFIG_TOUCHSCREEN_ATMEL_SWEEP2WAKE
 	sysfs_remove_file(android_touch_kobj, &dev_attr_sweep2wake.attr);
 #endif
 	sysfs_remove_file(android_touch_kobj, &dev_attr_info.attr);
@@ -2752,4 +2758,3 @@ module_exit(atmel_ts_exit);
 
 MODULE_DESCRIPTION("ATMEL Touch driver");
 MODULE_LICENSE("GPL");
-
