@@ -167,10 +167,11 @@ EXPORT_SYMBOL(sweep2wake_setleddev);
 static void sweep2wake_presspwr(struct work_struct * sweep2wake_presspwr_work) {
 	input_event(sweep2wake_pwrdev, EV_KEY, KEY_POWER, 1);
 	input_event(sweep2wake_pwrdev, EV_SYN, 0, 0);
-	msleep(100);
+	//msleep(100);
 	input_event(sweep2wake_pwrdev, EV_KEY, KEY_POWER, 0);
 	input_event(sweep2wake_pwrdev, EV_SYN, 0, 0);
-	msleep(100);
+	//msleep(100);
+	msleep(50);	//for better response time.
 	mutex_unlock(&pwrlock);
 	return;
 }
